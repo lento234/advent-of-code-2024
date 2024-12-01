@@ -4,14 +4,13 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Advent of code: day {}\n", .{1});
 
-    // parse input
-    var buffer: [32768]u8 = undefined;
-    const data = try std.fs.cwd().readFile("input.txt", &buffer);
-
-    // allocator
+    // allocaor
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+
+    // parse input
+    const data = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 2 << 13);
 
     // Part 1
     const result1 = try part1(u32, alloc, data);
@@ -99,7 +98,7 @@ test "part 1" {
 
     const alloc = std.testing.allocator;
 
-    try std.testing.expect(try part1(u32, alloc, input) == 11);
+    try std.testing.expectEqual(try part1(u32, alloc, input), 11);
 }
 
 test "part 2" {
@@ -114,5 +113,5 @@ test "part 2" {
 
     const alloc = std.testing.allocator;
 
-    try std.testing.expect(try part2(u32, alloc, input) == 31);
+    try std.testing.expectEqual(try part2(u32, alloc, input), 31);
 }
