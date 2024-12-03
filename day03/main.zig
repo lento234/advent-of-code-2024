@@ -1,25 +1,38 @@
 const std = @import("std");
 
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Advent of code: day {}\n", .{2});
+
+    // allocator
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    // read input
+    const input = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 1 << 15);
+
+    const result1 = try part1(input);
+    try stdout.print("Part 1: {d}\n", .{result1});
+}
+
 fn part1(input: []const u8) !i32 {
-    std.debug.print("input: {s}\n", .{input});
-    var idx: usize = 0;
-    while (idx < input.len - 4) {
-        if (input[idx] == 'm' and input[idx + 1] == 'u' and input[idx + 2] == 'l' and input[idx + 3] == '(') {
-            var k = idx;
-            while (k < input.len) {
-                if (input[k] == ')') {
-                    break;
-                }
-                k += 1;
-            }
-            if (input[k] != ')') {
-                continue;
-            }
-            std.debug.print("start {}, end {}\n", .{ idx, k });
-        }
-        idx += 1;
+    // std.debug.print("input: {s}\n", .{input});
+
+    var it = std.mem.tokenizeSequence(u8, input, "mul(");
+    var total: i32 = 0;
+    while (it.next()) |section| {
+        // std.debug.print("secton: {s}\n", .{section});
+        var nums = std.mem.tokenizeScalar(u8, section, ',');
+        const l = std.fmt.parseInt(i32, nums.next().?, 10) catch continue;
+
+        var remain = std.mem.tokenizeScalar(u8, nums.rest(), ')');
+        const r = std.fmt.parseInt(i32, remain.next().?, 10) catch continue;
+
+        // std.debug.print(" l = {d}, r = {d}\n", .{ l, r });
+        total += l * r;
     }
-    return 0;
+    return total;
 }
 
 test "part1" {
