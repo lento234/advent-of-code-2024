@@ -14,12 +14,15 @@ pub fn main() !void {
 
     const result1 = try part1(alloc, input);
     try stdout.print("Part 1: {d}\n", .{result1});
+
+    const result2 = try part2(alloc, input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
-fn arrayFromStr(line: []const u8, arr: *std.ArrayList(i32)) !void {
+fn arrayFromStr(line: []const u8, list: *std.ArrayList(i32)) !void {
     var splits = std.mem.tokenizeScalar(u8, line, ' ');
     while (splits.next()) |s| {
-        try arr.append(try std.fmt.parseInt(i32, s, 10));
+        try list.append(try std.fmt.parseInt(i32, s, 10));
     }
 }
 
@@ -36,6 +39,23 @@ fn isSafe(arr: []const i32) bool {
     return true;
 }
 
+fn isDampedSafe(list: *std.ArrayList(i32)) !bool {
+    if (isSafe(list.items))
+        return true;
+
+    for (0..list.items.len) |idx| {
+        var pruned_list = try list.clone();
+        defer pruned_list.deinit();
+        _ = pruned_list.orderedRemove(idx);
+
+        if (isSafe(pruned_list.items)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 fn part1(alloc: std.mem.Allocator, input: []const u8) !i32 {
     var lines = std.mem.tokenizeScalar(u8, input, '\n');
 
@@ -47,6 +67,23 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !i32 {
 
         try arrayFromStr(line, &list);
         if (isSafe(list.items)) {
+            answer += 1;
+        }
+    }
+    return answer;
+}
+
+fn part2(alloc: std.mem.Allocator, input: []const u8) !i32 {
+    var lines = std.mem.tokenizeScalar(u8, input, '\n');
+
+    var answer: i32 = 0;
+    var i: u32 = 0;
+    while (lines.next()) |line| : (i += 1) {
+        var list = std.ArrayList(i32).init(alloc);
+        defer list.deinit();
+
+        try arrayFromStr(line, &list);
+        if (try isDampedSafe(&list)) {
             answer += 1;
             std.debug.print("line [{d:04}]-> '{s}' [safe]\n", .{ i, line });
         } else {
@@ -68,4 +105,18 @@ test "part 1" {
     const alloc = std.testing.allocator;
 
     try std.testing.expectEqual(2, try part1(alloc, input));
+}
+
+test "part 2" {
+    const input =
+        \\7 6 4 2 1
+        \\1 2 7 8 9
+        \\9 7 6 2 1
+        \\1 3 2 4 5
+        \\8 6 4 4 1
+        \\1 3 6 7 9
+    ;
+    const alloc = std.testing.allocator;
+
+    try std.testing.expectEqual(4, try part2(alloc, input));
 }
