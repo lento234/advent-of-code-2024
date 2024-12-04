@@ -14,6 +14,9 @@ pub fn main() !void {
 
     const result1 = try part1(input);
     try stdout.print("Part 1: {d}\n", .{result1});
+
+    const result2 = try part2(input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
 fn part1(input: []const u8) !i32 {
@@ -35,8 +38,36 @@ fn part1(input: []const u8) !i32 {
     return total;
 }
 
+fn part2(input: []const u8) !i32 {
+    // std.debug.print("input: {s}\n", .{input});
+
+    var it = std.mem.tokenizeSequence(u8, input, "don't()");
+    var total: i32 = 0;
+    while (it.peek() != null) {
+        const section = it.next().?;
+        // std.debug.print("secton: '{s}' ", .{section});
+        const n = try part1(section);
+        total += n;
+
+        it = std.mem.tokenizeSequence(u8, it.rest(), "do()");
+        _ = it.next();
+        // if (do) |v| std.debug.print(", do: '{s}'", .{v});
+
+        it = std.mem.tokenizeSequence(u8, it.rest(), "don't()");
+
+        // std.debug.print(", n = {d}, total = {d}\n", .{ n, total });
+    }
+    return total;
+}
+
 test "part1" {
     const input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
 
     try std.testing.expectEqual(161, try part1(input));
+}
+
+test "part2" {
+    const input = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
+
+    try std.testing.expectEqual(48, try part2(input));
 }
