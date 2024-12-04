@@ -10,7 +10,7 @@ pub fn main() !void {
     const alloc = arena.allocator();
 
     // parse input
-    const data = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 2 << 13);
+    const data = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 1 << 14);
 
     // Part 1
     const result1 = try part1(u32, alloc, data);
