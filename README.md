@@ -9,3 +9,10 @@ Advent of Code is an Advent calendar of small programming puzzles for a variety 
 
 1. Install zig (0.14.0-dev): https://ziglang.org/download/
 
+## Timings
+
+Chip: M1 max
+
+1. 922.9 µs ± 165.2 µs
+2. 3.3 ms ±   0.2 ms
+3. 859.4 µs ± 176.8 µs

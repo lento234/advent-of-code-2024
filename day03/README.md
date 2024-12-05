@@ -36,12 +36,37 @@ up the result of each instruction produces *`161`*
 Scan the corrupted memory for uncorrupted `mul` instructions. *What do
 you get if you add up all of the results of the multiplications?*
 
-To begin, [get your puzzle input](3/input).
+Your puzzle answer was `169021493`.
 
-Answer:
+## \-\-- Part Two \-\-- 
 
-You can also [\[Share[on
-[Bluesky](https://bsky.app/intent/compose?text=%22Mull+It+Over%22+%2D+Day+3+%2D+Advent+of+Code+2024+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F3)
-[Twitter](https://twitter.com/intent/tweet?text=%22Mull+It+Over%22+%2D+Day+3+%2D+Advent+of+Code+2024&url=https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F3&related=ericwastl&hashtags=AdventOfCode)
-[Mastodon](javascript:void(0);){onclick="var ms; tryfinally if(typeof ms!=='string')ms=''; ms=prompt('Mastodon Server?',ms); if(typeof ms==='string' && ms.length){this.href='https://'+ms+'/share?text=%22Mull+It+Over%22+%2D+Day+3+%2D+Advent+of+Code+2024+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F3';tryfinally}else"
-target="_blank"}]\]] this puzzle.
+As you scan through the corrupted memory, you notice that some of the
+conditional statements are also still intact. If you handle some of the
+uncorrupted conditional statements in the program, you might be able to
+get an even more accurate result.
+
+There are two new instructions you\'ll need to handle:
+
+-   The `do()` instruction *enables* future `mul` instructions.
+-   The `don't()` instruction *disables* future `mul` instructions.
+
+Only the *most recent* `do()` or `don't()` instruction applies. At the
+beginning of the program, `mul` instructions are *enabled*.
+
+For example:
+
+    xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))
+
+This corrupted memory is similar to the example from before, but this
+time the `mul(5,5)` and `mul(11,8)` instructions are *disabled* because
+there is a `don't()` instruction before them. The other `mul`
+instructions function normally, including the one at the end that gets
+re-*enabled* by a `do()` instruction.
+
+This time, the sum of the results is *`48`* (`2*4 + 8*5`).
+
+Handle the new instructions; *what do you get if you add up all of the
+results of just the enabled multiplications?*
+
+Your puzzle answer was `111762583`.
+
