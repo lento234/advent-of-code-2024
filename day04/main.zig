@@ -14,6 +14,9 @@ pub fn main() !void {
 
     const result1 = try part1(alloc, input);
     try stdout.print("Part 1: {d}\n", .{result1});
+
+    const result2 = try part2(alloc, input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
 const Point = struct {
@@ -113,7 +116,7 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !i64 {
     const grid = try Grid.init(alloc, input);
     defer grid.deinit();
 
-    std.debug.print("grid:\n{?}\n", .{grid});
+    // std.debug.print("grid:\n{?}\n", .{grid});
 
     const dir = [_]Point{
         .{ .i = 0, .j = 1 }, // right
@@ -143,6 +146,45 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !i64 {
             }
         }
     }
+    return total;
+}
+
+fn part2(alloc: std.mem.Allocator, input: []const u8) !i64 {
+    // std.debug.print("input:\n{s}\n", .{input});
+
+    // const grid = Grid{ .nrows = 1, .ncols = 1 };
+    const grid = try Grid.init(alloc, input);
+    defer grid.deinit();
+
+    // std.debug.print("grid:\n{?}\n", .{grid});
+
+    const dbl = Point{ .i = 1, .j = -1 }; // bottom-left
+    const dbr = Point{ .i = 1, .j = 1 }; // bottom-right
+    const dtl = Point{ .i = -1, .j = -1 }; // top-left
+    const dtr = Point{ .i = -1, .j = 1 }; // top-right
+
+    var total: i64 = 0;
+    for (0..grid.nrows) |i| {
+        for (0..grid.ncols) |j| {
+            const start = Point{ .i = @intCast(i), .j = @intCast(j) };
+            if (grid.get(start) != 'A') continue;
+
+            const bl = start.add(dbl);
+            const br = start.add(dbr);
+            const tl = start.add(dtl);
+            const tr = start.add(dtr);
+
+            if (!grid.inside(bl) or !grid.inside(br) or !grid.inside(tl) or !grid.inside(tr)) continue;
+
+            if (((grid.get(bl) == 'M' and grid.get(tr) == 'S') or
+                (grid.get(bl) == 'S' and grid.get(tr) == 'M')) and ((grid.get(tl) == 'M' and grid.get(br) == 'S') or
+                (grid.get(tl) == 'S' and grid.get(br) == 'M')))
+            {
+                // std.debug.print(" {}, {c}\n", .{ start, grid.get(start) });
+                total += 1;
+            }
+        }
+    }
 
     return total;
 }
@@ -152,4 +194,11 @@ test "part 1" {
     const input = try std.fs.cwd().readFileAlloc(alloc, "test_input.txt", 1 << 12);
     defer alloc.free(input);
     try std.testing.expectEqual(18, try part1(alloc, input));
+}
+
+test "part 2" {
+    const alloc = std.testing.allocator;
+    const input = try std.fs.cwd().readFileAlloc(alloc, "test_input.txt", 1 << 12);
+    defer alloc.free(input);
+    try std.testing.expectEqual(9, try part2(alloc, input));
 }
