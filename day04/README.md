@@ -52,12 +52,44 @@ have been replaced with `.`:
 Take a look at the little Elf\'s word search. *How many times does
 `XMAS` appear?*
 
-To begin, [get your puzzle input](4/input).
+Your puzzle answer was `2397`.
 
-Answer:
+## \-\-- Part Two \-\-- 
 
-You can also [\[Share[on
-[Bluesky](https://bsky.app/intent/compose?text=%22Ceres+Search%22+%2D+Day+4+%2D+Advent+of+Code+2024+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F4)
-[Twitter](https://twitter.com/intent/tweet?text=%22Ceres+Search%22+%2D+Day+4+%2D+Advent+of+Code+2024&url=https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F4&related=ericwastl&hashtags=AdventOfCode)
-[Mastodon](javascript:void(0);){onclick="var ms; tryfinally if(typeof ms!=='string')ms=''; ms=prompt('Mastodon Server?',ms); if(typeof ms==='string' && ms.length){this.href='https://'+ms+'/share?text=%22Ceres+Search%22+%2D+Day+4+%2D+Advent+of+Code+2024+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2024%2Fday%2F4';tryfinally}else"
-target="_blank"}]\]] this puzzle.
+The Elf looks quizzically at you. Did you misunderstand the assignment?
+
+Looking for the instructions, you flip over the word search to find that
+this isn\'t actually an *`XMAS`* puzzle; it\'s an
+[*`X-MAS`*]
+puzzle in which you\'re supposed to find two `MAS` in the shape of an
+`X`. One way to achieve that is like this:
+
+    M.S
+    .A.
+    M.S
+
+Irrelevant characters have again been replaced with `.` in the above
+diagram. Within the `X`, each `MAS` can be written forwards or
+backwards.
+
+Here\'s the same example from before, but this time all of the `X-MAS`es
+have been kept instead:
+
+    .M.S......
+    ..A..MSMS.
+    .M.S.MAA..
+    ..A.ASMSM.
+    .M.S.M....
+    ..........
+    S.S.S.S.S.
+    .A.A.A.A..
+    M.M.M.M.M.
+    ..........
+
+In this example, an `X-MAS` appears *`9`* times.
+
+Flip the word search from the instructions back over to the word search
+side and try again. *How many times does an `X-MAS` appear?*
+
+Your puzzle answer was `1824`.
+
