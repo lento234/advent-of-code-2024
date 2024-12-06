@@ -14,8 +14,8 @@ pub fn main() !void {
     const result1 = try part1(alloc, input);
     try stdout.print("Part 1: {d}\n", .{result1});
 
-    // const result2 = try part2(alloc, input);
-    // try stdout.print("Part 2: {d}\n", .{result2});
+    const result2 = try part2(alloc, input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
 fn stringToNumbers(alloc: std.mem.Allocator, line: []const u8, delimiter: u8) ![]i64 {
@@ -64,49 +64,53 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !i64 {
     return total;
 }
 
-fn isValid(alloc: std.mem.Allocator, nums: []i64, rules: std.StringArrayHashMap(void)) !bool {
-    var buf = try std.ArrayList(u8).initCapacity(alloc, 5);
-    defer buf.deinit();
-    var writer = buf.writer();
+fn isValid(nums: []i64, rules: std.StringArrayHashMap(void)) !bool {
+    var buf: [5]u8 = undefined;
     for (0..(nums.len - 1)) |i| {
         for ((i + 1)..(nums.len)) |j| {
-            try writer.print("{d}|{d}", .{ nums[j], nums[i] });
-            defer buf.clearRetainingCapacity();
-            if (rules.contains(buf.items)) return false;
+            const key = try std.fmt.bufPrint(&buf, "{d}|{d}", .{ nums[j], nums[i] });
+            if (rules.contains(key)) return false;
         }
     }
     return true;
 }
 
-fn part2(alloc: std.mem.Allocator, input: []const u8) !i64 {
-    std.debug.print("input:\n{s}\n", .{input});
+fn reorder(nums: []i64, rules: std.StringArrayHashMap(void)) !void {
+    var buf: [5]u8 = undefined;
+    for (0..(nums.len - 1)) |ii| {
+        const i = nums.len - ii - 1;
+        for ((ii + 1)..(nums.len)) |jj| {
+            const j = nums.len - jj - 1;
+            const key = try std.fmt.bufPrint(&buf, "{d}|{d}", .{ nums[j], nums[i] });
+            if (!rules.contains(key)) {
+                std.mem.swap(i64, &nums[j], &nums[i]);
+            }
+        }
+    }
+}
 
+fn part2(alloc: std.mem.Allocator, input: []const u8) !i64 {
     var it = std.mem.splitScalar(u8, input, '\n');
-    // const line = it.next().?;
-    // const rule = try Rule.init(line);
-    // std.debug.print("rule = {}\n", .{rule});
     var rules = std.StringArrayHashMap(void).init(alloc);
     defer rules.deinit();
     while (it.next()) |line| {
         if (std.mem.eql(u8, line, "")) break;
-        // std.debug.print("rule: {s}\n", .{line});
         try rules.put(line, {});
-        // append(try Rule.init(line));
     }
-    std.debug.print("rules ({d}) = \n{s}\n", .{ rules.count(), rules.keys() });
+
+    var total: i64 = 0;
 
     while (it.next()) |line| {
         if (std.mem.eql(u8, line, "")) break;
         const nums: []i64 = try stringToNumbers(alloc, line, ',');
         defer alloc.free(nums);
-        if (!try isValid(alloc, nums, rules)) {
-            std.debug.print("{any} ", .{nums});
-            std.mem.sort(i64, nums, {}, comptime std.sort.asc(i64));
-            std.debug.print(", sorted = {any}\n", .{nums});
+        if (!try isValid(nums, rules)) {
+            try reorder(nums, rules);
+            total += nums[nums.len / 2];
         }
     }
 
-    return 123;
+    return total;
 }
 
 test "part 1" {
