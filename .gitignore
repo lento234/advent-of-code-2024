@@ -1,0 +1,7 @@
+.cookie
+main
+*.o
+input.txt
+.zig-cache/
+zig-out/
+day*/README.md
