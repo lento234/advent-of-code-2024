@@ -85,9 +85,9 @@ fn part2(alloc: std.mem.Allocator, input: []const u8) !i32 {
         try arrayFromStr(line, &list);
         if (try isDampedSafe(&list)) {
             answer += 1;
-            std.debug.print("line [{d:04}]-> '{s}' [safe]\n", .{ i, line });
-        } else {
-            std.debug.print("line [{d:04}]-> '{s}' [not safe]\n", .{ i, line });
+            // std.debug.print("line [{d:04}]-> '{s}' [safe]\n", .{ i, line });
+            // } else {
+            //     std.debug.print("line [{d:04}]-> '{s}' [not safe]\n", .{ i, line });
         }
     }
     return answer;
