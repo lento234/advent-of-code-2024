@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     var d: u8 = 1;
-    const max_day = 9;
+    const max_day = 10;
     while (d <= max_day) : (d += 1) {
         const exe = b.addExecutable(.{
             .name = b.fmt("day{:0>2}", .{d}),
