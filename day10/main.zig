@@ -15,8 +15,8 @@ pub fn main() !void {
     const result1 = try part1(alloc, input);
     try stdout.print("Part 1: {d}\n", .{result1});
 
-    // const result2 = try part2(alloc, input);
-    // try stdout.print("Part 2: {d}\n", .{result2});
+    const result2 = try part2(alloc, input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
 const Point = struct {
@@ -150,6 +150,58 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !usize {
     return total;
 }
 
+fn part2(alloc: std.mem.Allocator, input: []const u8) !usize {
+    const grid = try Grid.init(alloc, input);
+    defer grid.deinit();
+
+    // print grid
+    // std.debug.print("{}\n", .{grid});
+
+    const neighbors = [_]Point{
+        Point{ .i = -1, .j = 0 },
+        Point{ .i = 1, .j = 0 },
+        Point{ .i = 0, .j = 1 },
+        Point{ .i = 0, .j = -1 },
+    };
+
+    var total: usize = 0;
+    for (0..grid.nrows) |i| {
+        for (0..grid.ncols) |j| {
+            if (grid.field[i][j] == 0) {
+                // var total_reaches = std.AutoArrayHashMap(Point, void).init(alloc);
+                // defer total_reaches.deinit();
+                // depth-first-search
+                var stack = std.ArrayList(Point).init(alloc);
+                defer stack.deinit();
+                try stack.append(Point{ .i = @intCast(i), .j = @intCast(j) });
+                while (stack.popOrNull()) |p| {
+                    if (grid.get(p) == 9) {
+                        // std.debug.print("reach 9 at {any}\n", .{p});
+                        total += 1;
+                        // try total_reaches.put(p, {});
+                        continue;
+                        // break;
+                    }
+                    for (neighbors) |dp| {
+                        const n = p.add(dp);
+                        // std.debug.print("{any} + {any} -> {any} ({})\n", .{ p, dp, n, grid.inside(n) });
+                        if (grid.inside(n)) {
+                            const diff = grid.get(n) - grid.get(p);
+                            if (diff == 1) {
+                                // std.debug.print("{any} ({d}) + {any} -> {any} ({d})\n", .{ p, grid.get(p), dp, n, grid.get(n) });
+                                try stack.append(n);
+                            }
+                        }
+                    }
+                }
+                // total += total_reaches.count();
+            }
+        }
+    }
+    // std.debug.print("total => {d}\n", .{total});
+    return total;
+}
+
 test "part 1" {
     const alloc = std.testing.allocator;
 
@@ -197,4 +249,33 @@ test "part 1" {
     ;
 
     try std.testing.expectEqual(3, try part1(alloc, input_4));
+}
+
+test "part 2" {
+    const alloc = std.testing.allocator;
+
+    const input_1 =
+        \\2222202
+        \\2243212
+        \\2252222
+        \\2265432
+        \\2272242
+        \\2287652
+        \\2292222
+    ;
+
+    try std.testing.expectEqual(3, try part2(alloc, input_1));
+
+    const input_2 =
+        \\89010123
+        \\78121874
+        \\87430965
+        \\96549874
+        \\45678903
+        \\32019012
+        \\01329801
+        \\10456732
+    ;
+
+    try std.testing.expectEqual(81, try part2(alloc, input_2));
 }
