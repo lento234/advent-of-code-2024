@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("Advent of code: day {}\n", .{9});
+    try stdout.print("Advent of code: day {}\n", .{10});
 
     // allocator
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
