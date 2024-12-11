@@ -113,37 +113,38 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !usize {
         Point{ .i = 0, .j = -1 },
     };
 
+    var total_reaches = std.AutoArrayHashMap(Point, void).init(alloc);
+    defer total_reaches.deinit();
+    var stack = try std.ArrayList(Point).initCapacity(alloc, grid.nrows * grid.ncols);
+    defer stack.deinit();
+
     var total: usize = 0;
     for (0..grid.nrows) |i| {
         for (0..grid.ncols) |j| {
-            if (grid.field[i][j] == 0) {
-                var total_reaches = std.AutoArrayHashMap(Point, void).init(alloc);
-                defer total_reaches.deinit();
-                // depth-first-search
-                var stack = std.ArrayList(Point).init(alloc);
-                defer stack.deinit();
-                try stack.append(Point{ .i = @intCast(i), .j = @intCast(j) });
-                while (stack.popOrNull()) |p| {
-                    if (grid.get(p) == 9) {
-                        // std.debug.print("reach 9 at {any}\n", .{p});
-                        try total_reaches.put(p, {});
-                        continue;
-                        // break;
-                    }
-                    for (neighbors) |dp| {
-                        const n = p.add(dp);
-                        // std.debug.print("{any} + {any} -> {any} ({})\n", .{ p, dp, n, grid.inside(n) });
-                        if (grid.inside(n)) {
-                            const diff = grid.get(n) - grid.get(p);
-                            if (diff == 1) {
-                                // std.debug.print("{any} ({d}) + {any} -> {any} ({d})\n", .{ p, grid.get(p), dp, n, grid.get(n) });
-                                try stack.append(n);
-                            }
-                        }
+            if (grid.field[i][j] != 0) continue;
+
+            // depth-first-search
+            defer total_reaches.clearRetainingCapacity();
+            defer stack.clearRetainingCapacity();
+            try stack.append(Point{ .i = @intCast(i), .j = @intCast(j) });
+            while (stack.popOrNull()) |p| {
+                if (grid.get(p) == 9) {
+                    // std.debug.print("reach 9 at {any}\n", .{p});
+                    try total_reaches.put(p, {});
+                    continue;
+                    // break;
+                }
+
+                for (neighbors) |dp| {
+                    const n = p.add(dp);
+                    // std.debug.print("{any} + {any} -> {any} ({})\n", .{ p, dp, n, grid.inside(n) });
+                    if (grid.inside(n) and (grid.get(n) - grid.get(p)) == 1) {
+                        // std.debug.print("{any} ({d}) + {any} -> {any} ({d})\n", .{ p, grid.get(p), dp, n, grid.get(n) });
+                        try stack.append(n);
                     }
                 }
-                total += total_reaches.count();
             }
+            total += total_reaches.count();
         }
     }
     // std.debug.print("total => {d}\n", .{total});
@@ -164,38 +165,37 @@ fn part2(alloc: std.mem.Allocator, input: []const u8) !usize {
         Point{ .i = 0, .j = -1 },
     };
 
+    var stack = try std.ArrayList(Point).initCapacity(alloc, grid.nrows * grid.ncols);
+    defer stack.deinit();
+
     var total: usize = 0;
     for (0..grid.nrows) |i| {
         for (0..grid.ncols) |j| {
-            if (grid.field[i][j] == 0) {
-                // var total_reaches = std.AutoArrayHashMap(Point, void).init(alloc);
-                // defer total_reaches.deinit();
-                // depth-first-search
-                var stack = std.ArrayList(Point).init(alloc);
-                defer stack.deinit();
-                try stack.append(Point{ .i = @intCast(i), .j = @intCast(j) });
-                while (stack.popOrNull()) |p| {
-                    if (grid.get(p) == 9) {
-                        // std.debug.print("reach 9 at {any}\n", .{p});
-                        total += 1;
-                        // try total_reaches.put(p, {});
-                        continue;
-                        // break;
-                    }
-                    for (neighbors) |dp| {
-                        const n = p.add(dp);
-                        // std.debug.print("{any} + {any} -> {any} ({})\n", .{ p, dp, n, grid.inside(n) });
-                        if (grid.inside(n)) {
-                            const diff = grid.get(n) - grid.get(p);
-                            if (diff == 1) {
-                                // std.debug.print("{any} ({d}) + {any} -> {any} ({d})\n", .{ p, grid.get(p), dp, n, grid.get(n) });
-                                try stack.append(n);
-                            }
-                        }
+            if (grid.field[i][j] != 0) continue;
+            // var total_reaches = std.AutoArrayHashMap(Point, void).init(alloc);
+            // defer total_reaches.deinit();
+
+            // depth-first-search
+            defer stack.clearRetainingCapacity();
+            try stack.append(Point{ .i = @intCast(i), .j = @intCast(j) });
+            while (stack.popOrNull()) |p| {
+                if (grid.get(p) == 9) {
+                    // std.debug.print("reach 9 at {any}\n", .{p});
+                    total += 1;
+                    // try total_reaches.put(p, {});
+                    continue;
+                    // break;
+                }
+                for (neighbors) |dp| {
+                    const n = p.add(dp);
+                    // std.debug.print("{any} + {any} -> {any} ({})\n", .{ p, dp, n, grid.inside(n) });
+                    if (grid.inside(n) and (grid.get(n) - grid.get(p)) == 1) {
+                        // std.debug.print("{any} ({d}) + {any} -> {any} ({d})\n", .{ p, grid.get(p), dp, n, grid.get(n) });
+                        try stack.append(n);
                     }
                 }
-                // total += total_reaches.count();
             }
+            // total += total_reaches.count();
         }
     }
     // std.debug.print("total => {d}\n", .{total});
