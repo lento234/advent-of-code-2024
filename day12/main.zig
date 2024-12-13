@@ -1,5 +1,24 @@
 const std = @import("std");
 
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Advent of code: day {}\n", .{12});
+
+    // allocator
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    // read input
+    const input = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 1 << 15);
+
+    const result1 = try part1(alloc, input);
+    try stdout.print("Part 1: {d}\n", .{result1});
+    //
+    // const result2 = try part1and2(alloc, input, 75);
+    // try stdout.print("Part 2: {d}\n", .{result2});
+}
+
 const Direction = enum { north, south, east, west };
 
 const Point = struct {
@@ -9,11 +28,15 @@ const Point = struct {
 
     fn get(self: Self, dir: Direction) Point {
         return switch (dir) {
-            .north => Point{ .i = self.i - 1, .j = self.j },
+            .north => Point{ .i = self.i -% 1, .j = self.j },
             .south => Point{ .i = self.i + 1, .j = self.j },
             .east => Point{ .i = self.i, .j = self.j + 1 },
-            .west => Point{ .i = self.i, .j = self.j - 1 },
+            .west => Point{ .i = self.i, .j = self.j -% 1 },
         };
+    }
+
+    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("p({d}, {d})", .{ self.i, self.j });
     }
 };
 
@@ -71,6 +94,18 @@ const Grid = struct {
         return buffer[0..idx];
     }
 
+    pub fn perimeter(self: Self, p: Point) usize {
+        var perim: usize = 0;
+        const c = self.get(p);
+
+        for ([_]Direction{ .north, .south, .east, .west }) |d| {
+            const n = p.get(d); // neighbor
+            if ((self.inside(n) and self.get(n) != c) or !self.inside(n))
+                perim += 1;
+        }
+        return perim;
+    }
+
     pub fn print(self: Self) void {
         std.debug.print("Grid({d} x {d}):\n", .{ self.nrows, self.ncols });
         for (0..self.nrows) |i| {
@@ -84,8 +119,8 @@ const Grid = struct {
     }
 };
 
-fn part1(alloc: std.mem.Allocator, input: []const u8) !void {
-    std.debug.print("input:\n\n{s}\n", .{input});
+fn part1(alloc: std.mem.Allocator, input: []const u8) !u64 {
+    // std.debug.print("input:\n\n{s}\n", .{input});
 
     const grid = try Grid.init(alloc, input);
     defer grid.deinit();
@@ -98,11 +133,10 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !void {
         }
     }
 
-    // const bff: [100]u8 = undefined;
-    // std.heap.FixedBufferAllocator.init(&bff);
-
     var stack = try std.ArrayList(Point).initCapacity(alloc, grid.ncols * grid.nrows);
     defer stack.deinit();
+
+    var price: u64 = 0;
 
     while (tovisit.popOrNull()) |kv| {
         defer stack.clearRetainingCapacity();
@@ -111,44 +145,75 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !void {
         const start = kv.key;
         const c = grid.get(start).?;
         try stack.append(start);
-        std.debug.print("start: {?} = {c} -> ", .{ start, c });
+        // std.debug.print("start: {?} = {c} -> ", .{ start, c });
 
-        var buffer: [4]Point = undefined;
-        const neighbors = grid.neighbors(&buffer, start);
+        var perimeter: u64 = 0;
+        var area: u64 = 0;
 
-        std.debug.print("neighbors -> {any}\n", .{neighbors});
-        break;
+        // search for all valid regions
+        while (stack.popOrNull()) |p| {
+            // remove the point from total lists
+            _ = tovisit.swapRemove(p);
 
-        // // var perimeter: u64 = 0;
-        // var area: u64 = 0;
-        //
-        // // search for all valid regions
-        // while (stack.popOrNull()) |p| {
-        //     // remove the point from total lists
-        //     _ = tovisit.swapRemove(p);
-        //
-        //     const buffer: [4]Point = undefined;
-        //     const neighbors = grid.neighbors(buffer, p);
-        //     for (neighbors) |n| {
-        //         // if the neighors does not much the start ignore it
-        //         if (grid.get(n).? != c) continue;
-        //         // perimeter += grid.perimeter(n, c);
-        //         area += 1;
-        //     }
-        // }
-        // std.debug.print("area = {d}\n", .{area});
+            // calculatea area and perimeter
+            area += 1;
+            perimeter += grid.perimeter(p);
+
+            // add neighbors
+            var buffer: [4]Point = undefined;
+            const neighbors = grid.neighbors(&buffer, p);
+            // std.debug.print("all neighbor -> {any}\n", .{neighbors});
+            for (neighbors) |n| {
+                // if the neighors does not much the start ignore it
+                if (grid.get(n).? != c or !tovisit.contains(n)) continue;
+                // std.debug.print("neighbor -> {any} added\n", .{n});
+                // remove neighbor from tovisit and put it into the stack
+                // add the neighbor to the stack
+                try stack.append(tovisit.fetchOrderedRemove(n).?.key);
+            }
+        }
+        // std.debug.print("area = {d}, perimeter = {d}\n", .{ area, perimeter });
+        price += area * perimeter;
     }
+
+    // std.debug.print("total price = {d}\n", .{price});
+    return price;
 }
 
 test "part 1" {
     const alloc = std.testing.allocator;
-    const input =
+
+    const input_a =
         \\AAAA
         \\BBCD
         \\BBCC
         \\EEEC
         \\
     ;
+    try std.testing.expectEqual(140, try part1(alloc, input_a));
 
-    try part1(alloc, input);
+    const input_b =
+        \\OOOOO
+        \\OXOXO
+        \\OOOOO
+        \\OXOXO
+        \\OOOOO
+        \\
+    ;
+    try std.testing.expectEqual(772, try part1(alloc, input_b));
+
+    const input_c =
+        \\RRRRIICCFF
+        \\RRRRIICCCF
+        \\VVRRRCCFFF
+        \\VVRCCCJFFF
+        \\VVVVCJJCFE
+        \\VVIVCCJJEE
+        \\VVIIICJJEE
+        \\MIIIIIJJEE
+        \\MIIISIJEEE
+        \\MMMISSJEEE
+        \\
+    ;
+    try std.testing.expectEqual(1930, try part1(alloc, input_c));
 }
