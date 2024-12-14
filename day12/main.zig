@@ -14,12 +14,49 @@ pub fn main() !void {
 
     const result1 = try part1(alloc, input);
     try stdout.print("Part 1: {d}\n", .{result1});
-    //
-    // const result2 = try part1and2(alloc, input, 75);
-    // try stdout.print("Part 2: {d}\n", .{result2});
+
+    const result2 = try part2(alloc, input);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
 
-const Direction = enum { north, south, east, west };
+const Direction = enum {
+    const Self = @This();
+    north,
+    south,
+    east,
+    west,
+    northeast,
+    southeast,
+    northwest,
+    southwest,
+
+    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{s}", .{switch (self) {
+            .north => "north",
+            .south => "south",
+            .east => "east",
+            .west => "west",
+            .northeast => "northeast",
+            .southeast => "southeast",
+            .northwest => "northwest",
+            .southwest => "southwest",
+        }});
+    }
+};
+
+const Edge = struct {
+    const Self = @This();
+    p: Point,
+    d: Direction,
+
+    pub fn equal(self: Self, other: Self) bool {
+        return self.p.i == other.p.i and self.p.j == other.p.j and self.d == other.d;
+    }
+
+    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{{{any}, {any}}}", .{ self.p, self.d });
+    }
+};
 
 const Point = struct {
     const Self = @This();
@@ -32,11 +69,16 @@ const Point = struct {
             .south => Point{ .i = self.i + 1, .j = self.j },
             .east => Point{ .i = self.i, .j = self.j + 1 },
             .west => Point{ .i = self.i, .j = self.j -% 1 },
+            // diagonals
+            .northeast => Point{ .i = self.i -% 1, .j = self.j + 1 },
+            .southeast => Point{ .i = self.i + 1, .j = self.j + 1 },
+            .northwest => Point{ .i = self.i -% 1, .j = self.j -% 1 },
+            .southwest => Point{ .i = self.i + 1, .j = self.j -% 1 },
         };
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("p({d}, {d})", .{ self.i, self.j });
+        try writer.print("({d}, {d})", .{ self.i, self.j });
     }
 };
 
@@ -73,8 +115,8 @@ const Grid = struct {
         self.alloc.free(self.field);
     }
 
-    pub fn inside(self: Self, p: Point) bool {
-        return p.i >= 0 and p.i < self.nrows and p.j >= 0 and p.j < self.ncols;
+    pub inline fn inside(self: Self, p: Point) bool {
+        return p.i < self.nrows and p.j < self.ncols;
     }
 
     pub fn get(self: Self, p: Point) ?u8 {
@@ -104,6 +146,43 @@ const Grid = struct {
                 perim += 1;
         }
         return perim;
+    }
+
+    pub fn nCorners(self: Self, p: Point) u64 {
+        const c = self.get(p);
+        const north = p.get(.north);
+        const south = p.get(.south);
+        const east = p.get(.east);
+        const west = p.get(.west);
+        const northeast = p.get(.northeast);
+        const southeast = p.get(.southeast);
+        const northwest = p.get(.northwest);
+        const southwest = p.get(.southwest);
+
+        var n: u64 = 0;
+
+        for ([_]Direction{ .southwest, .southeast, .northwest, .northeast }) |d| {
+            switch (d) {
+                .southwest => {
+                    if ((self.get(south) != c and self.get(west) != c) or (self.get(south) == c and self.get(west) == c and self.get(southwest) != c))
+                        n += 1;
+                },
+                .southeast => {
+                    if ((self.get(south) != c and self.get(east) != c) or (self.get(south) == c and self.get(east) == c and self.get(southeast) != c))
+                        n += 1;
+                },
+                .northwest => {
+                    if ((self.get(north) != c and self.get(west) != c) or (self.get(north) == c and self.get(west) == c and self.get(northwest) != c))
+                        n += 1;
+                },
+                .northeast => {
+                    if ((self.get(north) != c and self.get(east) != c) or (self.get(north) == c and self.get(east) == c and self.get(northeast) != c))
+                        n += 1;
+                },
+                else => unreachable,
+            }
+        }
+        return n;
     }
 
     pub fn print(self: Self) void {
@@ -180,6 +259,63 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !u64 {
     return price;
 }
 
+fn part2(alloc: std.mem.Allocator, input: []const u8) !u64 {
+    // std.debug.print("input:\n\n{s}\n", .{input});
+
+    const grid = try Grid.init(alloc, input);
+    defer grid.deinit();
+
+    var tovisit = std.AutoArrayHashMap(Point, void).init(alloc);
+    defer tovisit.deinit();
+    for (0..grid.nrows) |i| {
+        for (0..grid.ncols) |j| {
+            try tovisit.put(.{ .i = i, .j = j }, {});
+        }
+    }
+
+    var stack = try std.ArrayList(Point).initCapacity(alloc, grid.ncols * grid.nrows);
+    defer stack.deinit();
+
+    var price: u64 = 0;
+
+    while (tovisit.popOrNull()) |kv| {
+        defer stack.clearRetainingCapacity();
+
+        // get next starting point
+        const start = kv.key;
+        const c = grid.get(start).?;
+        try stack.append(start);
+        var area: u64 = 0;
+        var n_sides: u64 = 0;
+
+        // var lowet_point = start;
+
+        // search for all valid regions
+        while (stack.popOrNull()) |p| {
+            // remove the point from total lists
+            _ = tovisit.fetchOrderedRemove(p);
+
+            // calculate area and sides
+            area += 1;
+            n_sides += grid.nCorners(p);
+
+            // add neighbors
+            var buffer: [4]Point = undefined;
+            const neighbors = grid.neighbors(&buffer, p);
+            for (neighbors) |n| {
+                // if the neighors does not much the start ignore it
+                if (grid.get(n).? != c or !tovisit.contains(n)) continue;
+                // std.debug.print("neighbor -> {any} added\n", .{n});
+                // remove neighbor from tovisit and put it into the stack
+                // add the neighbor to the stack
+                try stack.append(tovisit.fetchOrderedRemove(n).?.key);
+            }
+        }
+        price += area * n_sides;
+    }
+    return price;
+}
+
 test "part 1" {
     const alloc = std.testing.allocator;
 
@@ -216,4 +352,52 @@ test "part 1" {
         \\
     ;
     try std.testing.expectEqual(1930, try part1(alloc, input_c));
+}
+
+test "part 2" {
+    const alloc = std.testing.allocator;
+
+    const input_a =
+        \\AAAA
+        \\BBCD
+        \\BBCC
+        \\EEEC
+        \\
+    ;
+    try std.testing.expectEqual(80, try part2(alloc, input_a));
+
+    const input_b =
+        \\OOOOO
+        \\OXOXO
+        \\OOOOO
+        \\OXOXO
+        \\OOOOO
+        \\
+    ;
+    try std.testing.expectEqual(436, try part2(alloc, input_b));
+
+    const input_c =
+        \\EEEEE
+        \\EXXXX
+        \\EEEEE
+        \\EXXXX
+        \\EEEEE
+        \\
+    ;
+    try std.testing.expectEqual(236, try part2(alloc, input_c));
+
+    const input_d =
+        \\RRRRIICCFF
+        \\RRRRIICCCF
+        \\VVRRRCCFFF
+        \\VVRCCCJFFF
+        \\VVVVCJJCFE
+        \\VVIVCCJJEE
+        \\VVIIICJJEE
+        \\MIIIIIJJEE
+        \\MIIISIJEEE
+        \\MMMISSJEEE
+        \\
+    ;
+    try std.testing.expectEqual(1206, try part2(alloc, input_d));
 }
