@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
 
     var d: u8 = 1;
-    const max_day = 13;
+    const max_day = 14;
     while (d <= max_day) : (d += 1) {
         const exe = b.addExecutable(.{
             .name = b.fmt("day{:0>2}", .{d}),
