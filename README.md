@@ -45,7 +45,7 @@ Measured using `hyperfine`.
 | 10  |   1.0 ms ±   0.2 ms | 310.3 µs ± 216.5 µs |
 | 11  |   7.9 ms ±   0.2 ms |   8.0 ms ±   0.4 ms |
 | 12  |  34.5 ms ±   0.3 ms |  41.9 ms ±   1.2 ms |
-| 13  | 688.9 µs ± 132.0 µs |                     |
+| 13  | 688.9 µs ± 132.0 µs | 126.5 µs ± 113.2 µs |
 
 
 [1]: https://youtu.be/CQXsVqRV7-M?si=vcw77L2LPMxknHpi&t=1100
