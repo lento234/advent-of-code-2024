@@ -11,9 +11,14 @@ pub fn main() !void {
     // read input
     const input = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 1 << 15);
 
-    const result1 = try part1(alloc, input);
+    const result1 = try part1and2(alloc, input, .part1);
     try stdout.print("Part 1: {d}\n", .{result1});
+
+    const result2 = try part1and2(alloc, input, .part2);
+    try stdout.print("Part 2: {d}\n", .{result2});
 }
+
+const Part = enum { part1, part2 };
 
 const Direction = enum(u8) {
     const Self = @This();
@@ -72,8 +77,6 @@ const Grid = struct {
     field: []u8,
     alloc: std.mem.Allocator,
     p: Position,
-
-    const Part = enum { part1, part2 };
 
     pub fn init(alloc: std.mem.Allocator, text: []const u8, part: Part) !Grid {
         var it = std.mem.tokenizeScalar(u8, text, '\n');
@@ -152,11 +155,8 @@ const Grid = struct {
     }
 
     pub fn moveBlock(self: *Self, p: Position, dir: Direction) void {
-        std.debug.print("moving {} {}\n", .{ p, dir });
         const nbr = if (self.get(p) == ']') p.get(.left) else p.get(.right);
-        std.debug.print("moving (2) {} {} \n", .{ p, dir });
         if (self.get(p) == '.' or self.get(p) == '#') return;
-        std.debug.print("moving (3) {} {}\n", .{ p, dir });
         self.moveBlock(p.get(dir), dir);
         self.moveBlock(nbr.get(dir), dir);
         self.swap(p, p.get(dir));
@@ -167,18 +167,13 @@ const Grid = struct {
         if (self.get(p) == '.') return true; // free
         if (!self.inside(p) or self.get(p) == '#') return false; // block
 
-        std.debug.print("canMoveBlock ({}): {} -> '{c}'\n", .{ p, p, self.get(p).? });
-
         // check if its a block
         const nbr = if (self.get(p) == ']') p.get(.left) else p.get(.right);
-        std.debug.print("canMoveBlock ({}): nbr {} -> '{c}'\n", .{ p, nbr, self.get(nbr).? });
 
         // recursively check if above the block is free
         if (self.canMoveBlock(p.get(dir), dir) and self.canMoveBlock(nbr.get(dir), dir)) {
-            std.debug.print("canMoveBlock ({}): inside if, can both move {} -> '{c}', {} -> '{c}'\n", .{ p, p, self.get(p.get(dir)).?, nbr, self.get(nbr.get(dir)).? });
             return true;
         }
-        std.debug.print("canMoveBlock ({}): AFTER if, CANNNOT move {} -> '{c}', {} -> '{c}'\n", .{ p, p, self.get(p.get(dir)).?, nbr, self.get(nbr.get(dir)).? });
         return false;
     }
 
@@ -209,9 +204,7 @@ const Grid = struct {
         }
 
         if (part == .part2 and (dir == .up or dir == .down)) {
-            std.debug.print("special case: {} {}\n", .{ self.p, dir });
             if (self.canMoveBlock(self.p.get(dir), dir)) {
-                std.debug.print("can move {} {}\n", .{ self.p, dir });
                 self.moveBlock(self.p.get(dir), dir);
                 self.swap(self.p, self.p.get(dir));
                 self.p = self.p.get(dir);
@@ -220,15 +213,11 @@ const Grid = struct {
         }
 
         var p = free_space;
-        // std.debug.print("third scenario..{}\n", .{p});
         while (!p.eql(self.p)) {
-            // std.debug.print("swapping {} {}\n", .{ p, p.get(dir.neg()) });
             self.swap(p, p.get(dir.neg()));
             p = p.get(dir.neg());
         }
-        // now update the pointer to p
         self.p = self.p.get(dir);
-        // std.debug.print("done..\n", .{});
     }
 
     pub fn find(self: Self, p: Position, dir: Direction, haystack: u8) ?Position {
@@ -251,73 +240,36 @@ const Grid = struct {
     }
 };
 
-fn part1(alloc: std.mem.Allocator, input: []const u8) !u64 {
+fn part1and2(alloc: std.mem.Allocator, input: []const u8, part: Part) !u64 {
     // std.debug.print("input:\n{s}\n", .{input});
 
     const idx = std.mem.indexOf(u8, input, "\n\n").?;
-    // std.debug.print("idx => {any}\n", .{idx});
-    var grid = try Grid.init(alloc, input[0..idx], .part1);
+    var grid = try Grid.init(alloc, input[0..idx], part);
     defer grid.deinit();
 
     // std.debug.print("{}\n", .{grid});
 
     // movements
-    // var it = std.mem.splitScalar(u8, input[idx+1..], '\n');
-    // var k: usize = 0;
     for (input[idx + 1 ..]) |c| {
         if (c == '\n') continue;
         const dir = @as(Direction, @enumFromInt(c));
-        // std.debug.print("[{d:03}]: move {} ({c})\n", .{ k, dir, c });
-
-        grid.move(dir, .part1);
-        // std.debug.print("{}\n", .{grid});
-        // k += 1;
+        grid.move(dir, part);
     }
 
+    // calculate total
+    const token: u8 = switch (part) {
+        .part1 => 'O',
+        .part2 => '[',
+    };
     var total: u64 = 0;
     for (0..grid.nrows) |i| {
         for (0..grid.ncols) |j| {
-            if (grid.get(.{ .i = i, .j = j }) == 'O') total += 100 * i + j;
+            if (grid.get(.{ .i = i, .j = j }) == token) total += 100 * i + j;
         }
     }
 
     // std.debug.print("total => {}\n", .{total});
-    // std.debug.print("p => {?}\n", .{grid.find(grid.p, .down, 'O')});
     return total;
-}
-
-fn part2(alloc: std.mem.Allocator, input: []const u8) !void {
-    std.debug.print("input:\n{s}\n", .{input});
-
-    const idx = std.mem.indexOf(u8, input, "\n\n").?;
-    // std.debug.print("idx => {any}\n", .{idx});
-    var grid = try Grid.init(alloc, input[0..idx], .part2);
-    defer grid.deinit();
-
-    std.debug.print("initial:\n{}\n", .{grid});
-
-    var k: usize = 0;
-    for (input[idx + 1 ..]) |c| {
-        if (c == '\n') continue;
-        const dir = @as(Direction, @enumFromInt(c));
-        std.debug.print("[{d:03}]: move {} ({c})\n", .{ k, dir, c });
-
-        grid.move(dir, .part2);
-        std.debug.print("{}\n", .{grid});
-        k += 1;
-    }
-    std.debug.print("after:\n{}\n", .{grid});
-
-    var total: u64 = 0;
-    for (0..grid.nrows) |i| {
-        for (0..grid.ncols) |j| {
-            if (grid.get(.{ .i = i, .j = j }) == '[') {
-                std.debug.print("{d}, {d} -> {d}\n", .{ i, j, 100 * i + j });
-                total += 100 * i + j;
-            }
-        }
-    }
-    std.debug.print("total => {d}\n", .{total});
 }
 
 test "part 1" {
@@ -336,13 +288,13 @@ test "part 1" {
         \\<^^>>>vv<v>>v<<
         \\
     ;
-    try std.testing.expectEqual(2028, try part1(alloc, small_input));
+    try std.testing.expectEqual(2028, try part1and2(alloc, small_input, .part1));
 
     // larger test sample
     const input = try std.fs.cwd().readFileAlloc(alloc, "test_input.txt", 1 << 15);
     defer alloc.free(input);
 
-    try std.testing.expectEqual(10092, try part1(alloc, input));
+    try std.testing.expectEqual(10092, try part1and2(alloc, input, .part1));
 }
 
 test "part 2" {
@@ -359,5 +311,11 @@ test "part 2" {
         \\<vv<<^^<<^^
         \\
     ;
-    try std.testing.expectEqual(618, try part2(alloc, small_input));
+    try std.testing.expectEqual(618, try part1and2(alloc, small_input, .part2));
+
+    // larger test sample
+    const input = try std.fs.cwd().readFileAlloc(alloc, "test_input.txt", 1 << 15);
+    defer alloc.free(input);
+
+    try std.testing.expectEqual(9021, try part1and2(alloc, input, .part2));
 }
