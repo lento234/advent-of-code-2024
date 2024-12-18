@@ -60,6 +60,11 @@ const Pos = struct {
     }
 };
 
+const Heading = struct {
+    p: Pos,
+    d: Dir,
+};
+
 const State = struct {
     const Self = @This();
     p: Pos,
@@ -75,7 +80,7 @@ const State = struct {
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("{{p = {}, dir = {}, score = {d}, turns = {d}, steps = {d}, prev = {any} }}", .{
+        try writer.print("{{p = {}, dir = {}, score = {d}, turns = {d}, steps = {d}, prev = {?}}}", .{
             self.p,
             self.d,
             self.score,
@@ -218,44 +223,60 @@ fn part2(alloc: std.mem.Allocator, input: []const u8) !void {
     // make grid
     const grid = try Grid.init(input);
 
-    var costbuffer: [10000]i64 = undefined;
-    var cost = costbuffer[0..grid.map.len];
-    for (0..cost.len) |i| {
-        cost[i] = std.math.maxInt(i64);
-    }
-
     // queue
     var queue = std.PriorityQueue(State, void, State.lessThan).init(alloc, {});
     defer queue.deinit();
 
     // add the start
     try queue.add(State{ .p = grid.start, .d = .east, .score = 0 });
-    cost[grid.start.toIdx(grid.ncols)] = 0;
 
-    var visited = std.AutoHashMap(Pos, State).init(alloc);
+    var visited = std.AutoHashMap(Pos, void).init(alloc);
     defer visited.deinit();
 
+    var costs = std.AutoHashMap(Pos, i64).init(alloc);
+    defer costs.deinit();
+    try costs.put(grid.start, 0);
+
+    // var i: usize = 0;
     while (queue.removeOrNull()) |s| {
         if (visited.contains(s.p)) continue;
-        try visited.put(s.p, s);
         if (grid.get(s.p) == 'E') {
             std.debug.print("---> found 'E' -> {}\n", .{s});
             // break :outer s.score;
         }
+        try visited.put(s.p, {});
         std.debug.print("q => {}\n", .{s});
 
         // add neighbors
         var buffer: [4]State = undefined;
         const nbrs = grid.neighbors(&buffer, s);
         for (nbrs) |next| {
-            if (cost[next.p.toIdx(grid.ncols)] > next.score) cost[next.p.toIdx(grid.ncols)] = next.score;
+            if (!costs.contains(next.p)) try costs.put(next.p, std.math.maxInt(i64));
+
+            if (next.score < costs.get(next.p).?) {
+                costs.getPtr(next.p).?.* = next.score;
+                try queue.add(next);
+            }
+            // if (cost[next.p.toIdx(grid.ncols)] > next.score) cost[next.p.toIdx(grid.ncols)] = next.score;
             // const next = State{ .p = n.p, .d = n.d, .score = s.score + n.score };
             // std.debug.print(" -> neigbor {} \n", .{next});
-            try queue.add(next);
         }
+        // if (i > 2) break;
+        // i += 1;
     }
-    std.debug.print("visited => {}\n", .{visited.count()});
+    std.debug.print("visited => {d}\n", .{visited.count()});
+    // std.debug.print("queue => {any}\n", .{queue.items});
 
+    var it = costs.iterator();
+    while (it.next()) |value| {
+        std.debug.print("costs => {any} -> {any}\n", .{ value.key_ptr.*, value.value_ptr.* });
+    }
+
+    var n: usize = 0;
+    for (input) |c| {
+        if (c == '.' or c == 'E' or c == 'S') n += 1;
+    }
+    std.debug.print("points -> {d}\n", .{n});
     // var it = visited.iterator();
     // while (it.next()) |i| {
     //     std.debug.print("val: {any}\n", .{i.value_ptr});
@@ -290,7 +311,7 @@ fn part2(alloc: std.mem.Allocator, input: []const u8) !void {
     // std.debug.print("map:{s}\n", .{map});
     // std.debug.print("score -> {?}\n", .{});
 
-    std.debug.print("cost => {any}\n", .{cost});
+    // std.debug.print("cost => {any}\n", .{cost});
 
     // return score;
 }
