@@ -67,6 +67,7 @@ const State = struct {
     score: i64 = 0,
     turns: i64 = 0,
     steps: i64 = 0,
+    prev: ?Pos = null,
 
     pub fn lessThan(context: void, a: State, b: State) std.math.Order {
         _ = context;
@@ -74,12 +75,13 @@ const State = struct {
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("{{p = {}, dir = {}, score = {d}, turns = {d}, steps = {d}}}", .{
+        try writer.print("{{p = {}, dir = {}, score = {d}, turns = {d}, steps = {d}, prev = {any} }}", .{
             self.p,
             self.d,
             self.score,
             self.turns,
             self.steps,
+            self.prev,
         });
     }
 };
@@ -151,6 +153,7 @@ const Grid = struct {
                     .score = s.score + dscore,
                     .turns = s.turns + dturns,
                     .steps = s.steps + dsteps,
+                    .prev = s.p,
                 };
                 idx += 1;
             }
@@ -175,8 +178,6 @@ const Grid = struct {
 fn part1(alloc: std.mem.Allocator, input: []const u8) !?i64 {
     // std.debug.print("input:\n{s}\n", .{input});
 
-    // const start = try std.time.Instant.now();
-
     // make grid
     const grid = try Grid.init(input);
 
@@ -187,38 +188,111 @@ fn part1(alloc: std.mem.Allocator, input: []const u8) !?i64 {
     // add the start
     try queue.add(State{ .p = grid.start, .d = .east, .score = 0 });
 
-    // var buffer: [4]Pos = undefined;
-    // const nbrs = grid.neighbors(&buffer, grid.start);
-    // std.debug.print("nbrs => {any}\n", .{nbrs});
-
     var visited = std.AutoHashMap(Pos, void).init(alloc);
     defer visited.deinit();
 
     const score: ?i64 = outer: {
         while (queue.removeOrNull()) |s| {
             if (grid.get(s.p) == 'E') {
-                // std.debug.print("---> found 'E' -> {}\n", .{s});
                 break :outer s.score;
             }
             if (visited.contains(s.p)) continue;
             try visited.put(s.p, {});
-            // std.debug.print("q => {}\n", .{s});
 
             // add neighbors
             var buffer: [4]State = undefined;
             const nbrs = grid.neighbors(&buffer, s);
             for (nbrs) |next| {
-                // const next = State{ .p = n.p, .d = n.d, .score = s.score + n.score };
-                // std.debug.print(" -> neigbor {} \n", .{next});
                 try queue.add(next);
             }
         }
         break :outer null;
     };
-    // std.debug.print("visited => {}\n", .{visited.count()});
-    // std.debug.print("score -> {?}\n", .{score});
 
     return score;
+}
+
+fn part2(alloc: std.mem.Allocator, input: []const u8) !void {
+    std.debug.print("input:\n{s}\n", .{input});
+
+    // make grid
+    const grid = try Grid.init(input);
+
+    var costbuffer: [10000]i64 = undefined;
+    var cost = costbuffer[0..grid.map.len];
+    for (0..cost.len) |i| {
+        cost[i] = std.math.maxInt(i64);
+    }
+
+    // queue
+    var queue = std.PriorityQueue(State, void, State.lessThan).init(alloc, {});
+    defer queue.deinit();
+
+    // add the start
+    try queue.add(State{ .p = grid.start, .d = .east, .score = 0 });
+    cost[grid.start.toIdx(grid.ncols)] = 0;
+
+    var visited = std.AutoHashMap(Pos, State).init(alloc);
+    defer visited.deinit();
+
+    while (queue.removeOrNull()) |s| {
+        if (visited.contains(s.p)) continue;
+        try visited.put(s.p, s);
+        if (grid.get(s.p) == 'E') {
+            std.debug.print("---> found 'E' -> {}\n", .{s});
+            // break :outer s.score;
+        }
+        std.debug.print("q => {}\n", .{s});
+
+        // add neighbors
+        var buffer: [4]State = undefined;
+        const nbrs = grid.neighbors(&buffer, s);
+        for (nbrs) |next| {
+            if (cost[next.p.toIdx(grid.ncols)] > next.score) cost[next.p.toIdx(grid.ncols)] = next.score;
+            // const next = State{ .p = n.p, .d = n.d, .score = s.score + n.score };
+            // std.debug.print(" -> neigbor {} \n", .{next});
+            try queue.add(next);
+        }
+    }
+    std.debug.print("visited => {}\n", .{visited.count()});
+
+    // var it = visited.iterator();
+    // while (it.next()) |i| {
+    //     std.debug.print("val: {any}\n", .{i.value_ptr});
+    // }
+
+    // var mapbuffer: [10000]u8 = undefined;
+    // var map = mapbuffer[0..grid.map.len];
+    // @memcpy(map, grid.map);
+    //
+    // var steps: i64 = 0;
+    // var cur: Pos = grid.end;
+    // map[cur.toIdx(grid.ncols)] = 'O';
+    // var i: usize = 0;
+    // while (i < 40) : (i += 1) {
+    //     if (visited.get(cur)) |p| {
+    //         cur = p.prev.?;
+    //         map[cur.toIdx(grid.ncols)] = 'O';
+    //         std.debug.print("cur: {any}, steps = {}\n", .{ cur, steps });
+    //         if (cur.i == grid.start.i and cur.j == grid.start.j) {
+    //             std.debug.print("reached end\n", .{});
+    //             break;
+    //         }
+    //         steps += 1;
+    //     } else {
+    //         std.debug.print("could not find!\n", .{});
+    //     }
+    // }
+    //
+    // std.debug.print("prev: {any}\n", .{visited.get(grid.end)});
+    // std.debug.print("cur: {any}, steps = {}\n", .{ cur, steps });
+
+    // std.debug.print("map:{s}\n", .{map});
+    // std.debug.print("score -> {?}\n", .{});
+
+    std.debug.print("cost => {any}\n", .{cost});
+
+    // return score;
 }
 
 test "part 1" {
@@ -267,4 +341,52 @@ test "part 1" {
     ;
 
     try std.testing.expectEqual(11048, try part1(alloc, second_example));
+}
+
+test "part 2" {
+    const input =
+        \\###############
+        \\#.......#....E#
+        \\#.#.###.#.###.#
+        \\#.....#.#...#.#
+        \\#.###.#####.#.#
+        \\#.#.#.......#.#
+        \\#.#.#####.###.#
+        \\#...........#.#
+        \\###.#.#####.#.#
+        \\#...#.....#.#.#
+        \\#.#.#.###.#.#.#
+        \\#.....#...#.#.#
+        \\#.###.#.#.#.#.#
+        \\#S..#.....#...#
+        \\###############
+        \\
+    ;
+
+    const alloc = std.testing.allocator;
+
+    try part2(alloc, input);
+    //
+    // const second_example =
+    //     \\#################
+    //     \\#...#...#...#..E#
+    //     \\#.#.#.#.#.#.#.#.#
+    //     \\#.#.#.#...#...#.#
+    //     \\#.#.#.#.###.#.#.#
+    //     \\#...#.#.#.....#.#
+    //     \\#.#.#.#.#.#####.#
+    //     \\#.#...#.#.#.....#
+    //     \\#.#.#####.#.###.#
+    //     \\#.#.#.......#...#
+    //     \\#.#.###.#####.###
+    //     \\#.#.#...#.....#.#
+    //     \\#.#.#.#####.###.#
+    //     \\#.#.#.........#.#
+    //     \\#.#.#.#########.#
+    //     \\#S#.............#
+    //     \\#################
+    //     \\
+    // ;
+    //
+    // try part2(alloc, second_example);
 }
